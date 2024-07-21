@@ -10,6 +10,9 @@ World's first fully itnelligent and life long The XSSInpector Security AI ML is 
 
 ## Features
 
+### HTTP Verbs
+- **Fuzz**: Built-in HTTP Known to Unknwn HTTP Verb tempering to check for vulnerabilities
+  
 ### Machine Learning
 - **Deep Learning Models**: Utilizes neural networks to predict vulnerabilities based on complex features.
 - **Model Training and Prediction**: Trains models on past scan results and uses them to filter and prioritize URLs for scanning.
