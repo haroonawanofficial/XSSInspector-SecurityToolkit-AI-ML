@@ -1,8 +1,8 @@
-# Advanced XSS Scanner
+# XSSInpector Security AI ML 
 
 ## Overview
 
-The Advanced XSS Scanner is a comprehensive tool designed to detect Cross-Site Scripting (XSS) vulnerabilities in web applications. Leveraging a combination of advanced AI techniques, including deep learning, natural language processing (NLP), reinforcement learning, and automated payload generation, this scanner enhances the efficiency and accuracy of vulnerability detection.
+The XSSInpector Security AI ML  is a comprehensive tool designed to detect Cross-Site Scripting (XSS) vulnerabilities in web applications. Leveraging a combination of advanced AI techniques, including deep learning, natural language processing (NLP), reinforcement learning, and automated payload generation, this scanner enhances the efficiency and accuracy of vulnerability detection.
 
 ## Features
 
