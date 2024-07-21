@@ -44,4 +44,4 @@ World's first fully itnelligent and life long The XSSInpector Security AI ML is 
 
 ### Basic Scan with Deep Crawl and Model
 ```sh
-python xssscanadv.py -d http://testphp.vulnweb.com -t 100 -o vulnerable_urls.txt --deepcrawl --report report.html --duration 3600 --mode autounderstand --use-model
+python xssscanadv.py -d http://testphp.vulnweb.com -t 100 --report report.html --deepcrawl --duration 420 -s
