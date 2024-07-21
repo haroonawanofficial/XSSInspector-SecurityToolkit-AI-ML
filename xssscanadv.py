@@ -1,28 +1,338 @@
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Input
+import threading
+import sys
+import requests
+import argparse
+import sqlite3
+import time
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import urlparse, parse_qs
+import os
+from deep_learning import DeepLearningModel
+from nlp_analysis import analyze_content
+from reinforcement_learning import ReinforcementLearningAgent
+from payload_generation import generate_payloads
+import pickle
 
-class DeepLearningModel:
-    def __init__(self):
-        self.model = self.build_model()
+# Constants for terminal colors
+BLUE, RED, WHITE, YELLOW, MAGENTA, GREEN, END = '\33[94m', '\033[91m', '\033[97m', '\33[93m', '\033[1;35m', '\033[1;32m', '\033[0m'
 
-    def build_model(self):
-        model = Sequential()
-        model.add(Input(shape=(2,)))  # Adjust input shape to match features
-        model.add(Dense(64, activation='relu'))
-        model.add(Dense(32, activation='relu'))
-        model.add(Dense(1, activation='sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-        return model
+# Setup basic logging
+current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+print(f"{GREEN}[INFO]{END} Starting the XSS Scanner at {current_time}.")
+requests.packages.urllib3.disable_warnings()
 
-    def train(self, X, y):
-        X_train, X_test, y_train, y_test = train_test_split(np.array(X), np.array(y), test_size=0.3)
-        self.model.fit(X_train, y_train, epochs=10, batch_size=10, verbose=1)
-        predictions = (self.model.predict(X_test) > 0.5).astype("int32")
-        accuracy = accuracy_score(y_test, predictions)
-        print(f"Model trained with accuracy: {accuracy:.2f}")
+# Cursor animation for loading
+stop_animation = False
 
-    def predict(self, X):
-        return (self.model.predict(np.array(X)) > 0.5).astype("int32")
+def animate_cursor():
+    cursor = "|"
+    while not stop_animation:
+        for _ in range(3):
+            if stop_animation:
+                break
+            print(f"Loading{cursor}", end='\r')
+            time.sleep(0.5)
+            cursor = "|" if cursor == " " else " "
+
+cursor_thread = threading.Thread(target=animate_cursor)
+cursor_thread.daemon = True
+cursor_thread.start()
+
+# Database setup
+def setup_database():
+    connection = sqlite3.connect('xss_scan_results.db')
+    cursor = connection.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS vulnerabilities (
+            id INTEGER PRIMARY KEY,
+            url TEXT NOT NULL,
+            payload TEXT NOT NULL,
+            discovered_at DATETIME NOT NULL,
+            method TEXT NOT NULL,
+            success INTEGER NOT NULL
+        )
+    """)
+    connection.commit()
+    return connection, cursor
+
+db_connection, db_cursor = setup_database()
+
+# Read targets from file
+def read_target_from_file(filepath):
+    with open(filepath, "r") as f:
+        return [url.strip() for url in f.readlines() if url.strip()]
+
+# Argument parsing
+def get_arguments():
+    parser = argparse.ArgumentParser(description='Advanced XSS Reporter')
+    parser.add_argument("-t", "--thread", type=int, default=50, help="Number of Threads to Use. Default=50")
+    parser.add_argument("-o", "--output", help="Save Vulnerable URLs in TXT file")
+    parser.add_argument("-s", "--subs", action='store_true', help="Include Results of Subdomains")
+    parser.add_argument("--deepcrawl", action='store_true', help="Uses All Available APIs of CommonCrawl for Crawling URLs [**Takes Time**]")
+    parser.add_argument("--report", help="Generate an HTML report", default=None)
+    parser.add_argument("--duration", type=int, help="Duration in seconds to run the scan before auto-kill")
+    parser.add_argument("--mode", choices=["finetune", "autounderstand"], default="autounderstand", help="Fine-tune manually or auto-understand")
+    parser.add_argument("--blind-xss-endpoint", help="Public endpoint to check for Blind XSS payload execution")
+    parser.add_argument("--use-model", action='store_true', help="Use the trained model to filter URLs before scanning")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("-l", "--list", help="URLs List, e.g., google_urls.txt")
+    group.add_argument("-d", "--domain", help="Target Domain Name, e.g., testphp.vulnweb.com")
+    return parser.parse_args()
+
+# Function to fetch URLs using CommonCrawl
+def fetch_urls_commoncrawl(domain):
+    print(f"{GREEN}[INFO]{END} Fetching URLs from CommonCrawl for domain: {domain}")
+    cc_api = f"http://index.commoncrawl.org/CC-MAIN-2023-17-index?url={domain}&output=json"
+    response = requests.get(cc_api)
+    urls = []
+    if response.status_code == 200:
+        results = response.json()
+        for result in results:
+            urls.append(result['url'])
+    else:
+        print(f"{RED}[ERROR]{END} Failed to fetch URLs from CommonCrawl.")
+    return urls
+
+# Function to fetch URLs using Wayback Machine
+def fetch_urls_wayback(domain):
+    print(f"{GREEN}[INFO]{END} Fetching URLs from Wayback Machine for domain: {domain}")
+    wayback_api = f"http://web.archive.org/cdx/search/cdx?url={domain}/*&output=json&fl=original&collapse=urlkey"
+    response = requests.get(wayback_api)
+    urls = []
+    if response.status_code == 200:
+        results = response.json()
+        urls = [result[0] for result in results]
+    else:
+        print(f"{RED}[ERROR]{END} Failed to fetch URLs from Wayback Machine.")
+    return urls
+
+# XSS Scanner class definition
+class XSSScanner:
+    def __init__(self, url_list, thread_number, report_file=None, mode="autounderstand", blind_xss_endpoint=None, use_model=False):
+        self.url_list = list(set(url_list))
+        self.thread_number = thread_number
+        self.report_file = report_file
+        self.mode = mode
+        self.blind_xss_endpoint = blind_xss_endpoint
+        self.use_model = use_model
+        self.vulnerable_urls = []
+        self.scan_results = []
+        self.payloads = generate_payloads()
+        self.methods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"]
+        self.model = DeepLearningModel() if use_model else None
+        self.rl_agent = ReinforcementLearningAgent()
+
+    def load_or_train_model(self):
+        model_path = f"{args.domain.replace('http://', '').replace('https://', '').replace('/', '')}_xss_model.pkl"
+        if os.path.exists(model_path):
+            with open(model_path, 'rb') as model_file:
+                self.model = pickle.load(model_file)
+                if hasattr(self.model, "predict"):
+                    print(f"{GREEN}[INFO]{END} Loaded existing model from {model_path}")
+                else:
+                    print(f"{RED}[ERROR]{END} Existing model at {model_path} is not valid. Training a new model.")
+                    self.train_new_model()
+        else:
+            print(f"{GREEN}[INFO]{END} No existing model found. Training a new model.")
+            self.train_new_model()
+
+    def train_new_model(self):
+        print(f"{GREEN}[INFO]{END} Training a new model...")
+        X, y = self.generate_training_data()
+        if not X or not y:
+            print(f"{RED}[ERROR]{END} Training data is empty. Cannot train the model.")
+            return
+        self.model.train(X, y)
+        self.save_model()
+
+    def save_model(self):
+        model_path = f"{args.domain.replace('http://', '').replace('https://', '').replace('/', '')}_xss_model.pkl"
+        with open(model_path, 'wb') as model_file:
+            pickle.dump(self.model, model_file)
+        print(f"{GREEN}[INFO]{END} Model saved to {model_path}")
+
+    def generate_training_data(self):
+        X = []
+        y = []
+        if not self.scan_results:
+            print(f"{RED}[ERROR]{END} No scan results available to generate training data.")
+            return X, y
+        for result in self.scan_results:
+            features = self.extract_features(result['query_params'])
+            X.append(features)
+            y.append(result['success'])
+        return X, y
+
+    def auto_filter(self, urls):
+        filtered_urls = []
+        for url in urls:
+            parsed_url = urlparse(url)
+            query_params = parse_qs(parsed_url.query)
+            features = self.extract_features(query_params)
+            if self.model.predict([features])[0]:
+                filtered_urls.append(url)
+        return filtered_urls
+
+    def extract_features(self, query_params):
+        features = [len(query_params)]
+        if query_params:
+            first_param = list(query_params.keys())[0]
+            features.append(len(first_param))
+        else:
+            features.append(0)
+        return features
+
+    def detect_server(self, url):
+        try:
+            response = requests.head(url, timeout=10)
+            server_header = response.headers.get('Server', '').lower()
+            if 'nginx' in server_header:
+                return 'nginx'
+            elif 'apache' in server_header:
+                return 'apache'
+            elif 'iis' in server_header:
+                return 'iis'
+            else:
+                return 'unknown'
+        except requests.RequestException as e:
+            print(f"{RED}[ERROR]{END} Failed to detect server for {url}: {str(e)}")
+            return 'unknown'
+
+    def scan_urls_for_xss(self, url):
+        server_type = self.detect_server(url)
+        payloads = generate_payloads(server_type)
+        parsed_url = urlparse(url)
+        query_params = parse_qs(parsed_url.query)
+
+        for param, values in query_params.items():
+            for payload in payloads:
+                for method in self.methods:
+                    try:
+                        if method == "GET" or method == "HEAD":
+                            response = requests.request(method, f"{url}?{param}={payload}", verify=False, timeout=10)
+                        else:
+                            response = requests.request(method, url, data={param: payload}, verify=False, timeout=10)
+                        
+                        success = response.status_code == 200 and payload in response.text
+                        self.scan_results.append({'query_params': query_params, 'success': int(success)})
+
+                        if success:
+                            self.vulnerable_urls.append((url, payload, method))
+                            self.insert_into_db(url, payload, method, int(success))
+                        self.rl_agent.learn(url, param, payload, method, success)
+
+                    except requests.RequestException as e:
+                        print(f"{RED}[ERROR]{END} Failed to test {url} with {method}: {str(e)}")
+
+    def insert_into_db(self, url, payload, method, success):
+        db_cursor.execute("INSERT INTO vulnerabilities (url, payload, discovered_at, method, success) VALUES (?, ?, ?, ?, ?)",
+                          (url, payload, datetime.now(), method, success))
+        db_connection.commit()
+
+    def start_scan(self):
+        if self.use_model and self.model:
+            print(f"{GREEN}[INFO]{END} Using trained model to filter URLs before scanning.")
+            self.url_list = self.auto_filter(self.url_list)
+
+        with ThreadPoolExecutor(max_workers=self.thread_number) as executor:
+            executor.map(self.scan_urls_for_xss, self.url_list)
+
+        if self.report_file:
+            with open(self.report_file, 'w') as f:
+                for url, payload, method in self.vulnerable_urls:
+                    f.write(f"Vulnerable URL: {url} with Payload: {payload} using Method: {method}\n")
+
+        return self.vulnerable_urls
+
+    def check_blind_xss(self):
+        if not self.blind_xss_endpoint:
+            return
+
+        try:
+            response = requests.get(self.blind_xss_endpoint, timeout=10)
+            if response.status_code == 200:
+                print(f"{GREEN}[INFO]{END} Blind XSS endpoint check successful. Response: {response.text}")
+            else:
+                print(f"{RED}[ERROR]{END} Blind XSS endpoint check failed. Status code: {response.status_code}")
+        except requests.RequestException as e:
+            print(f"{RED}[ERROR]{END} Failed to check Blind XSS endpoint: {str(e)}")
+
+def terminate_scan():
+    global stop_animation
+    stop_animation = True
+    print(f"{RED}[INFO]{END} Scan terminated due to time limit.")
+    db_connection.close()
+    sys.exit(0)
+
+if __name__ == '__main__':
+    args = get_arguments()
+    
+    if args.list:
+        target_urls = read_target_from_file(args.list)
+    elif args.domain:
+        target_urls = [args.domain]
+        if args.deepcrawl:
+            target_urls.extend(fetch_urls_commoncrawl(args.domain))
+            target_urls.extend(fetch_urls_wayback(args.domain))
+        target_urls = list(set(target_urls))
+    else:
+        print(f"{RED}[ERROR]{END} Please provide either a URLs list file or a target domain.")
+        stop_animation = True
+        sys.exit(1)
+
+    if args.duration:
+        timer_thread = threading.Timer(args.duration, terminate_scan)
+        timer_thread.start()
+
+    scanner = XSSScanner(target_urls, args.thread, args.report, args.mode, args.blind_xss_endpoint, args.use_model)
+    vulnerable_urls = scanner.start_scan()
+
+    # Train the model after scanning
+    if scanner.scan_results:
+        scanner.train_new_model()
+
+    print(f"{GREEN}[INFO]{END} Scan completed. Total URLs scanned: {len(target_urls)}. Check {args.report} for details.")
+
+    total_links_audited = len(target_urls)
+    with open('total_links_audited.txt', 'w') as file:
+        file.write(str(total_links_audited))  # Write the total number of links audited to a text file
+
+    print(f"{current_time}] Total Links Audited: ", total_links_audited)
+
+    for url, payload, method in vulnerable_urls:
+        print(f"Vulnerable URL: {url} with Payload: {payload} using Method: {method}")
+    print(f"[{current_time}] Total Confirmed Cross Site Scripting Vulnerabilities: ", len(vulnerable_urls))
+
+    # Stop the cursor animation
+    stop_animation = True
+
+    # Ensure to close the database connection
+    db_connection.close()
+
+    # Check for Blind XSS results
+    scanner.check_blind_xss()
+
+# Function to view data in the database
+def view_db():
+    connection = sqlite3.connect('xss_scan_results.db')
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM vulnerabilities")
+    rows = cursor.fetchall()
+    for row in rows:
+        print(row)
+    connection.close()
+
+# Function to view trained model data
+def view_trained_data():
+    model_path = f"{args.domain.replace('http://', '').replace('https://', '').replace('/', '')}_xss_model.pkl"
+    if os.path.exists(model_path):
+        with open(model_path, 'rb') as model_file:
+            model = pickle.load(model_file)
+            print(model)
+    else:
+        print(f"{RED}[ERROR]{END} No trained model found for domain: {args.domain}")
+
+# Call these functions as needed
+# view_db()
+# view_trained_data()
