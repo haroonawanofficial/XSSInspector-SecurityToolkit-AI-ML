@@ -1,3 +1,5 @@
+import codecs
+
 def generate_payloads(server_type='generic'):
     if server_type == 'nginx':
         return [
