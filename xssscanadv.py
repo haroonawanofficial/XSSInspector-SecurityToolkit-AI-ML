@@ -5,17 +5,24 @@ import argparse
 import sqlite3
 import time
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from urllib.parse import urlparse, parse_qs
 import os
+import pickle
+import queue
+import signal
+import csv
+
+# Add the current directory to the Python path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from deep_learning import DeepLearningModel
 from nlp_analysis import analyze_content
 from reinforcement_learning import ReinforcementLearningAgent
 from payload_generation import generate_payloads
-import pickle
 
 # Constants for terminal colors
-BLUE, RED, WHITE, YELLOW, MAGENTA, GREEN, END = '\33[94m', '\033[91m', '\033[97m', '\33[93m', '\033[1;35m', '\033[1;32m', '\033[0m'
+BLUE, RED, WHITE, YELLOW, MAGENTA, GREEN, END = '\033[94m', '\033[91m', '\033[97m', '\033[93m', '\033[1;35m', '\033[1;32m', '\033[0m'
 
 # Setup basic logging
 current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -41,7 +48,7 @@ cursor_thread.start()
 
 # Database setup
 def setup_database():
-    connection = sqlite3.connect('xss_scan_results.db')
+    connection = sqlite3.connect('xss_scan_results.db', check_same_thread=False)
     cursor = connection.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS vulnerabilities (
@@ -53,10 +60,44 @@ def setup_database():
             success INTEGER NOT NULL
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS training_data (
+            id INTEGER PRIMARY KEY,
+            url TEXT,
+            param TEXT,
+            payload TEXT,
+            server_type TEXT,
+            method TEXT,
+            response_code INTEGER,
+            response_time REAL,
+            response_pattern TEXT,
+            success INTEGER,
+            content_snippet TEXT,
+            vulnerable INTEGER
+        )
+    """)
     connection.commit()
-    return connection, cursor
+    return connection
 
-db_connection, db_cursor = setup_database()
+db_connection = setup_database()
+
+# Queue for database operations
+db_queue = queue.Queue()
+
+# Function to handle database operations
+def db_worker():
+    while True:
+        db_connection, query, params = db_queue.get()
+        if query == "terminate":
+            break
+        cursor = db_connection.cursor()
+        cursor.execute(query, params)
+        db_connection.commit()
+        db_queue.task_done()
+
+db_thread = threading.Thread(target=db_worker)
+db_thread.daemon = True
+db_thread.start()
 
 # Read targets from file
 def read_target_from_file(filepath):
@@ -107,6 +148,25 @@ def fetch_urls_wayback(domain):
         print(f"{RED}[ERROR]{END} Failed to fetch URLs from Wayback Machine.")
     return urls
 
+# Function to save training data to CSV
+def save_training_data_to_csv():
+    with open('training_data.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['url', 'param', 'payload', 'server_type', 'method', 'response_code', 'response_time', 'response_pattern', 'success', 'content_snippet', 'vulnerable'])
+        cursor = db_connection.cursor()
+        cursor.execute("SELECT url, param, payload, server_type, method, response_code, response_time, response_pattern, success, content_snippet, vulnerable FROM training_data")
+        rows = cursor.fetchall()
+        for row in rows:
+            writer.writerow(row)
+
+# Function to insert training data
+def insert_training_data(url, param, payload, server_type, method, response_code, response_time, response_pattern, success, content_snippet, vulnerable):
+    query = """
+        INSERT INTO training_data (url, param, payload, server_type, method, response_code, response_time, response_pattern, success, content_snippet, vulnerable)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    db_queue.put((db_connection, query, (url, param, payload, server_type, method, response_code, response_time, response_pattern, success, content_snippet, vulnerable)))
+
 # XSS Scanner class definition
 class XSSScanner:
     def __init__(self, url_list, thread_number, report_file=None, mode="autounderstand", blind_xss_endpoint=None, use_model=False):
@@ -119,7 +179,7 @@ class XSSScanner:
         self.vulnerable_urls = []
         self.scan_results = []
         self.payloads = generate_payloads()
-        self.methods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"]
+        self.methods = ["CAT", "JEFF", "GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"]
         self.model = DeepLearningModel() if use_model else None
         self.rl_agent = ReinforcementLearningAgent()
 
@@ -134,7 +194,7 @@ class XSSScanner:
                     print(f"{RED}[ERROR]{END} Existing model at {model_path} is not valid. Training a new model.")
                     self.train_new_model()
         else:
-            print(f"{GREEN}[INFO]{END} No existing model found. Training a new model.")
+            print(f"{RED}[ERROR]{END} No trained model found for domain: {args.domain}")
             self.train_new_model()
 
     def train_new_model(self):
@@ -209,34 +269,40 @@ class XSSScanner:
             for payload in payloads:
                 for method in self.methods:
                     try:
+                        start_time = time.time()
                         if method == "GET" or method == "HEAD":
                             response = requests.request(method, f"{url}?{param}={payload}", verify=False, timeout=10)
                         else:
                             response = requests.request(method, url, data={param: payload}, verify=False, timeout=10)
-                        
+                        response_time = time.time() - start_time
                         success = response.status_code == 200 and payload in response.text
                         self.scan_results.append({'query_params': query_params, 'success': int(success)})
 
                         if success:
                             self.vulnerable_urls.append((url, payload, method))
-                            self.insert_into_db(url, payload, method, int(success))
+                            db_queue.put((db_connection, "INSERT INTO vulnerabilities (url, payload, discovered_at, method, success) VALUES (?, ?, ?, ?, ?)",
+                                          (url, payload, datetime.now(), method, int(success))))
                         self.rl_agent.learn(url, param, payload, method, success)
+
+                        # Insert training data
+                        insert_training_data(url, param, payload, server_type, method, response.status_code, response_time, response.text, int(success), response.text[:100], int(success))
 
                     except requests.RequestException as e:
                         print(f"{RED}[ERROR]{END} Failed to test {url} with {method}: {str(e)}")
-
-    def insert_into_db(self, url, payload, method, success):
-        db_cursor.execute("INSERT INTO vulnerabilities (url, payload, discovered_at, method, success) VALUES (?, ?, ?, ?, ?)",
-                          (url, payload, datetime.now(), method, success))
-        db_connection.commit()
 
     def start_scan(self):
         if self.use_model and self.model:
             print(f"{GREEN}[INFO]{END} Using trained model to filter URLs before scanning.")
             self.url_list = self.auto_filter(self.url_list)
 
-        with ThreadPoolExecutor(max_workers=self.thread_number) as executor:
-            executor.map(self.scan_urls_for_xss, self.url_list)
+        with ProcessPoolExecutor() as executor:
+            future_to_url = {executor.submit(self.scan_urls_for_xss, url): url for url in self.url_list}
+            for future in as_completed(future_to_url):
+                url = future_to_url[future]
+                try:
+                    future.result()
+                except Exception as exc:
+                    print(f"{RED}[ERROR]{END} {url} generated an exception: {exc}")
 
         if self.report_file:
             with open(self.report_file, 'w') as f:
@@ -261,9 +327,13 @@ class XSSScanner:
 def terminate_scan():
     global stop_animation
     stop_animation = True
-    print(f"{RED}[INFO]{END} Scan terminated due to time limit.")
-    db_connection.close()
+    print(f"\n{RED}[INFO]{END} Scan terminated by user or due to time limit.")
+    db_queue.put((None, "terminate", None))
+    save_training_data_to_csv()
     sys.exit(0)
+
+# Handle Ctrl+C gracefully
+signal.signal(signal.SIGINT, lambda signal, frame: terminate_scan())
 
 if __name__ == '__main__':
     args = get_arguments()
@@ -282,8 +352,8 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if args.duration:
-        timer_thread = threading.Timer(args.duration, terminate_scan)
-        timer_thread.start()
+        timer = threading.Timer(args.duration, terminate_scan)
+        timer.start()
 
     scanner = XSSScanner(target_urls, args.thread, args.report, args.mode, args.blind_xss_endpoint, args.use_model)
     vulnerable_urls = scanner.start_scan()
