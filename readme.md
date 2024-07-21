@@ -10,6 +10,9 @@ World's first fully itnelligent and life long The XSSInpector Security AI ML is 
 
 ## Features
 
+### AI-ML Trained Obfuscation Methods
+- **Known to Unknwown**: Built-in with known and unknown Obfuscation to auto check if we successfully bypassed the firewall and results are then recorded into trained data, giving more power and punch into the detection and accuracy of payload to find for more vulnerabilities
+
 ### HTTP Verbs
 - **Fuzz**: Built-in HTTP Known to Unknwn HTTP Verb tempering to check for vulnerabilities
   
