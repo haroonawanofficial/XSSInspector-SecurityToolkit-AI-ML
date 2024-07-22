@@ -10,38 +10,68 @@ The world's first fully intelligent and lifelong "The XSSInspector Security AI/M
 
 ## Features
 
-### AI-ML Trained Obfuscation Methods
-- **Known to Unknwown**: Built-in with known and unknown Obfuscation to auto check if we successfully bypassed the firewall and results are then recorded into trained data, giving more power and punch into the detection and accuracy of payload to find for more vulnerabilities
+# AI-ML Trained Obfuscation Methods
 
-### HTTP Verbs
-- **Fuzz**: Built-in HTTP Known to Unknwn HTTP Verb tempering to check for vulnerabilities
-  
-### Machine Learning
-- **Deep Learning Models**: Utilizes neural networks to predict vulnerabilities based on complex features.
-- **Model Training and Prediction**: Trains models on past scan results and uses them to filter and prioritize URLs for scanning.
+## Known to Unknown
+Includes built-in obfuscation methods to automatically check if we successfully bypassed the firewall. Results are then recorded into trained data, enhancing the detection and accuracy of payloads to identify more vulnerabilities.
 
-### Natural Language Processing (NLP)
-- **Content Analysis**: Analyzes web page content to identify forms and input fields that could be susceptible to XSS attacks.
-- **Form and Input Extraction**: Extracts details of forms and input fields to better target XSS injection points.
+## HTTP Verbs
 
-### Reinforcement Learning
-- **Adaptive Learning**: Learns from each scanning attempt to improve payload selection and application over time.
-- **History-Based Adjustments**: Adjusts future payload selection based on the success of past attempts.
+### Fuzz
+Built-in HTTP verb tampering to check for vulnerabilities, using known and unknown HTTP verbs.
 
-### Automated Payload Generation
-- **Dynamic Payloads**: Generates sophisticated XSS payloads dynamically based on the structure of the web page.
-- **Server-Specific Payloads**: Provides tailored payloads for different server types (e.g., nginx, apache, iis).
+## Machine Learning
 
-### URL Crawling
-- **Deep Crawling**: Fetches additional URLs using CommonCrawl and Wayback Machine to ensure comprehensive coverage.
-- **Targeted Crawling**: Focuses on URLs likely to be vulnerable based on predictive models.
+### Deep Learning Models
+Utilizes neural networks to predict vulnerabilities based on complex features.
 
-### Reporting and Logging
-- **Database Logging**: Logs all scan results in a SQLite database for easy access and analysis.
-- **HTML Reports**: Generates detailed HTML reports summarizing the scan results and vulnerabilities found.
+### Model Training and Prediction
+Trains models on past scan results and uses them to filter and prioritize URLs for scanning.
 
-### Multi-Threading
-- **Concurrent Scanning**: Utilizes multi-threading to scan multiple URLs simultaneously, improving scanning speed and efficiency.
+## Natural Language Processing (NLP)
+
+### Content Analysis
+Analyzes web page content to identify forms and input fields that could be susceptible to XSS attacks.
+
+### Form and Input Extraction
+Extracts details of forms and input fields to better target XSS injection points.
+
+## Reinforcement Learning
+
+### Adaptive Learning
+Learns from each scanning attempt to improve payload selection and application over time.
+
+### History-Based Adjustments
+Adjusts future payload selection based on the success of past attempts.
+
+## Automated Payload Generation
+
+### Dynamic Payloads
+Generates sophisticated XSS payloads dynamically based on the structure of the web page.
+
+### Server-Specific Payloads
+Provides tailored payloads for different server types (e.g., nginx, apache, IIS).
+
+## URL Crawling
+
+### Deep Crawling
+Fetches additional URLs using CommonCrawl and Wayback Machine to ensure comprehensive coverage.
+
+### Targeted Crawling
+Focuses on URLs likely to be vulnerable based on predictive models.
+
+## Reporting and Logging
+
+### Database Logging
+Logs all scan results in a SQLite database for easy access and analysis.
+
+### HTML Reports
+Generates detailed HTML reports summarizing the scan results and vulnerabilities found.
+
+## Multi-Threading
+
+### Concurrent Scanning
+Utilizes multi-threading to scan multiple URLs simultaneously, improving scanning speed and efficiency.
 
 ## Usage
 
@@ -49,3 +79,4 @@ The world's first fully intelligent and lifelong "The XSSInspector Security AI/M
 ```sh
 python xssscanadv.py -d http://testphp.vulnweb.com -t 100 --report report.html --deepcrawl --duration 420 -s
 python xssscanadv.py -d http://testphp.vulnweb.com -t 100 --report report.html --deepcrawl --duration 420 -s --mode autounderstand --use-model
+
