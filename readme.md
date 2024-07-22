@@ -60,6 +60,31 @@ Fetches additional URLs using CommonCrawl and Wayback Machine to ensure comprehe
 ### Targeted Crawling
 Focuses on URLs likely to be vulnerable based on predictive models.
 
+## Detection of XSS
+
+### Blind XSS
+Detects blind XSS vulnerabilities and can use custom endpoints to detect real-time blind XSS, training the software for more accuracy in future scans. Types include:
+- Server-Side Blind XSS
+- Client-Side Blind XSS
+- HTTP verb tampering based Blind XSS
+- Server Parameter Tampering for Blind XSS
+
+### Reflected XSS
+Identifies reflected XSS vulnerabilities and their subtypes by analyzing the immediate reflection of payloads. Types include:
+- GET-Based Reflected XSS
+- POST-Based Reflected XSS
+- URL-Based Reflected XSS
+- HTTP verb tampering based Reflected XSS
+- Server Parameter Tampering for Reflected XSS
+
+### Stored XSS
+Detects stored XSS vulnerabilities by inspecting whether payloads are saved and executed later within the web application. Types include:
+- Database Stored XSS
+- File Stored XSS
+- HTML Stored XSS
+- HTTP verb tampering based Stored XSS
+- Server Parameter Tampering for Stored XSS
+
 ## Reporting and Logging
 
 ### Database Logging
@@ -79,4 +104,5 @@ Utilizes multi-threading to scan multiple URLs simultaneously, improving scannin
 ```sh
 python xssscanadv.py -d http://testphp.vulnweb.com -t 100 --report report.html --deepcrawl --duration 420 -s
 python xssscanadv.py -d http://testphp.vulnweb.com -t 100 --report report.html --deepcrawl --duration 420 -s --mode autounderstand --use-model
+
 
