@@ -2,7 +2,7 @@
 
 ## Overview
 
-World's first fully itnelligent and life long The XSSInpector Security AI ML is a comprehensive tool designed to detect Refeclted, Stored, Blind (XSS) vulnerabilities in server/apps at RFC design, forms, crawls & advanced AI techniques, including deep learning, natural language processing (NLP), reinforcement learning, and automated payload generation, with accuracy and efficient output. Created and Designed by : Haroon Ahmad Awan
+The world's first fully intelligent and lifelong "The XSSInspector Security AI/ML" is a comprehensive tool designed to detect reflected, stored, and blind (XSS) vulnerabilities in servers/apps at RFC design, forms, crawls, and through advanced AI techniques, including deep learning, natural language processing (NLP), reinforcement learning, and automated payload generation, with accuracy and efficient output. Created and designed by Haroon Ahmad Awan.
 
 ## Contact 
 - haroon@cyberzeus.pk
