@@ -4,6 +4,37 @@
 
 The world's first fully intelligent and lifelong "The XSSInspector Security AI/ML" is a comprehensive tool designed to detect reflected, stored, and blind (XSS) vulnerabilities in servers/apps at RFC design, forms, crawls, and through advanced AI techniques, including deep learning, natural language processing (NLP), reinforcement learning, and automated payload generation, with accuracy and efficient output. Created and designed by Haroon Ahmad Awan.
 
+## Requirements
+
+Save the following content as `requirements.txt` in the root directory of your project:
+
+# Essential Libraries
+numpy
+scipy
+scikit-learn
+pandas
+tensorflow
+keras
+sqlalchemy
+flask
+beautifulsoup4
+requests
+lxml
+
+## Create a virtual environment:
+
+```bash
+python3 -m venv venv
+```
+
+## On Linux/Mac:
+source venv/bin/activate
+venv\Scripts\activate
+pip install -r requirements.txt
+
+## Run your project:
+python xssscanadv.py
+
 ## Contact 
 - haroon@cyberzeus.pk
 - https://www.cyberzeus.pk
