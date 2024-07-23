@@ -31,7 +31,7 @@ lxml
 python3 -m venv venv
 ```
 
-## On Linux/Mac:
+## On Windows/Linux/Mac:
 ```bash
 source venv/bin/activate
 venv\Scripts\activate
