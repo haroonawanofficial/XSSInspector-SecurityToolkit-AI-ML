@@ -7,8 +7,9 @@ The world's first fully intelligent and lifelong "The XSSInspector Security AI/M
 ## Requirements
 
 Save the following content as `requirements.txt` in the root directory of your project:
+## Essential Libraries
 
-# Essential Libraries
+```bash
 numpy
 scipy
 scikit-learn
@@ -20,7 +21,7 @@ flask
 beautifulsoup4
 requests
 lxml
-
+```
 ## Create a virtual environment:
 
 ```bash
@@ -28,12 +29,16 @@ python3 -m venv venv
 ```
 
 ## On Linux/Mac:
+```bash
 source venv/bin/activate
 venv\Scripts\activate
 pip install -r requirements.txt
+```
 
 ## Run your project:
+```bash
 python xssscanadv.py
+```
 
 ## Contact 
 - haroon@cyberzeus.pk
