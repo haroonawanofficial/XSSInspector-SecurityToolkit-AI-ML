@@ -192,4 +192,5 @@ python xssscanadv.py -l found_links.txt -t 100 --duration 3600 -s --mode autound
 - To use model, use --use-model
 - Bring down WAF, IDS, IPS and Everything basically
 - Enjoy!
-![AI-ML XSS Pic1]([https://i.ibb.co/wd5zmmd/ai-ml-xss-pic1.png](https://i.ibb.co/YPGsQhG/ai-ml-xss-pic3.png))
+![AI-ML XSS Pic3](https://i.ibb.co/YPGsQhG/ai-ml-xss-pic3.png)
+
