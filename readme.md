@@ -180,3 +180,16 @@ python xssscanadv.py -l found_links.txt -t 100 --duration 3600 -s --mode autound
 ## Screenshots
 ![AI-ML XSS Pic1](https://i.ibb.co/wd5zmmd/ai-ml-xss-pic1.png)
 ![AI-ML XSS Pic2](https://i.ibb.co/d4jTvD9/ai-ml-xss-pic2.png)
+
+## Training for Machine Learning and Artificial Intelligence Tweaking
+- We have initiated Auto Understand Mode for Random Forest Model and Neural Language Processing Capabilities
+- This will train the model, train models only have tweaked algorithms like x and y, 0 and 1
+- We have raw data with training_data.csv, that imported raw data
+- Then we have NLP check to analysis and correct the data
+- We have corellated with the Machine Learning Auto Understand Mode for Extreme Fine Tuning
+- Once the software stops
+- Congratulations! You have trained the model,
+- To use model, use --use-model
+- Bring down WAF, IDS, IPS and Everything basically
+- Enjoy!
+![AI-ML XSS Pic1]([https://i.ibb.co/wd5zmmd/ai-ml-xss-pic1.png](https://i.ibb.co/YPGsQhG/ai-ml-xss-pic3.png))
