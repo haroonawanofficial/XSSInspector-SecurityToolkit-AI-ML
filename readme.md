@@ -199,3 +199,8 @@ python xssscanadv.py -l found_links.txt -t 100 --duration 3600 -s --mode autound
 
 ## Trained model is ready to use with --mode autounderstand for Artificial Intelligence
 ![AI-ML XSS Pic4](https://i.ibb.co/zxM9snW/ai-ml-xss-pic4.png)
+
+## Zero Loss and High Learning Capability
+- High Accuracy: The accuracy remains consistently high, around 98.7% to 99.0%, throughout the training epochs. This indicates that the model is performing well on the training data.
+- Low Loss: The loss values are relatively low, starting from 0.1046 and decreasing to around 0.0423 - 0.0509. Lower loss values indicate that the model's predictions are close to the actual values.
+- Stability: The accuracy and loss values do not fluctuate wildly between epochs, suggesting that the model is not overfitting and is learning the patterns in the data effectively.
