@@ -126,6 +126,11 @@ Detects stored XSS vulnerabilities by inspecting whether payloads are saved and 
 ### Database Logging
 Logs all scan results in a SQLite database for easy access and analysis.
 
+### How to View Logged Database
+```bash
+Go to https://inloop.github.io/sqlite-viewer/# and import the .db file to see what's going on after you have finished scanning with success and failure ratios(intended for expert users only)
+```
+
 ### HTML Reports
 Generates detailed HTML reports summarizing the scan results and vulnerabilities found.
 
@@ -141,7 +146,12 @@ Utilizes multi-threading to scan multiple URLs simultaneously, improving scannin
 python xssscanadv.py -d http://testphp.vulnweb.com --crawl
 ```
 
-## Step 1a: Use the crawled URLs for scanning
+## Step 1a: Crawl the target website for URLs with Report
+```bash
+python xssscanadv.py -d http://testphp.vulnweb.com --crawl --report report.html
+```
+
+## Step 1b: Use the crawled URLs for scanning
 ```bash
 python xssscanadv.py -l crawled_urls.txt -t 100 --duration 3600 -s --mode autounderstand --use-model --report report.html
 ```
