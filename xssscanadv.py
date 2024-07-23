@@ -341,6 +341,9 @@ def insert_vulnerability_data(url, payload, method, xss_type, success):
     """
     db_queue.put((db_connection, query, (url, payload, datetime.now(), method, xss_type, success)))
 
+# Ensure vulnerable_urls is initialized
+vulnerable_urls = []
+
 # XSS Scanner class definition
 class XSSScanner:
     def __init__(self, url_list, thread_number, report_file=None, mode="autounderstand", blind_xss_endpoint=None, use_model=False):
@@ -452,6 +455,29 @@ class XSSScanner:
                 return "Reflected XSS"
         return "Unknown XSS"
 
+    def check_dom_xss(self, response, payload):
+        soup = BeautifulSoup(response.text, 'html.parser')
+        scripts = soup.find_all('script')
+        for script in scripts:
+            if payload in script.text:
+                return True
+        return False
+
+    def check_stored_xss(self, url, payload):
+        headers = {'User-Agent': random.choice(USER_AGENTS)}
+        response = requests.get(url, headers=headers, timeout=10)
+        if payload in response.text:
+            return True
+        return False
+
+    def check_rfc_vulnerabilities(self, url, payload):
+        headers = {'User-Agent': random.choice(USER_AGENTS)}
+        response = requests.get(url, headers=headers, timeout=10)
+        if "application/xml" in response.headers.get('Content-Type', ''):
+            if payload in response.text:
+                return True
+        return False
+
     def scan_urls_for_xss(self, url):
         server_type = self.detect_server(url)
         self.payloads = generate_payloads(server_type)
@@ -487,6 +513,21 @@ class XSSScanner:
                                 file.write(f"{url},{payload},{method},{xss_type}\n")
                         else:
                             logging.info(f"No XSS vulnerability detected for {url} with payload {payload} using method {method}")
+
+                        if self.check_dom_xss(response, payload):
+                            insert_vulnerability_data(url, payload, method, "DOM XSS", 1)
+                            with open('audit_links.txt', 'a') as file:
+                                file.write(f"{url},{payload},{method},DOM XSS\n")
+
+                        if self.check_stored_xss(url, payload):
+                            insert_vulnerability_data(url, payload, method, "Stored XSS", 1)
+                            with open('audit_links.txt', 'a') as file:
+                                file.write(f"{url},{payload},{method},Stored XSS\n")
+
+                        if self.check_rfc_vulnerabilities(url, payload):
+                            insert_vulnerability_data(url, payload, method, "RFC Design Vulnerability", 1)
+                            with open('audit_links.txt', 'a') as file:
+                                file.write(f"{url},{payload},{method},RFC Design Vulnerability\n")
 
                         self.rl_agent.learn(url, param, payload, method, success)
 
@@ -618,7 +659,8 @@ if __name__ == '__main__':
     logging.info(f"Total Links Audited: {total_links_audited}")
 
     print(f"[{current_time}] Total Links Audited: ", total_links_audited)
-
+    
+if vulnerable_urls is not None:
     for url, payload, method in vulnerable_urls:
         print(f"Vulnerable URL: {url} with Payload: {payload} using Method: {method}")
     print(f"[{current_time}] Total Confirmed Cross Site Scripting Vulnerabilities: ", len(vulnerable_urls))
@@ -654,5 +696,5 @@ def view_trained_data():
         print(f"{RED}[ERROR]{END} No trained model found for domain: {args.domain}")
 
 # Call these functions as needed
-# view_db()
-# view_trained_data()
+view_db()
+view_trained_data()
