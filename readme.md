@@ -171,11 +171,12 @@ python xssscanadv.py -l testphp_vulnweb_com_cleaned_urls.txt -t 100 --duration 3
 python xssscanadv.py -d http://testphp.vulnweb.com --deepcrawl
 ```
 
-## Screenshots
-![Example Image](https://i.ibb.co/nwxLJJw)
-
 ## Step 3a: Use the deep crawled URLs for scanning
 ```bash
 python xssscanadv.py -l found_links.txt -t 100 --duration 3600 -s --mode autounderstand --use-model --report report.html
 ```
-```
+
+
+## Screenshots
+![AI-ML XSS Pic1](https://i.ibb.co/wd5zmmd/ai-ml-xss-pic1.png)
+![AI-ML XSS Pic2](https://i.ibb.co/d4jTvD9/ai-ml-xss-pic2.png)
