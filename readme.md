@@ -99,10 +99,38 @@ Generates detailed HTML reports summarizing the scan results and vulnerabilities
 Utilizes multi-threading to scan multiple URLs simultaneously, improving scanning speed and efficiency.
 
 ## Usage
+Here are the usage instructions formatted in markdown for GitHub:
 
-### Basic Scan with Deep Crawl and Model
-```sh
-python xssscanadv.py -d http://testphp.vulnweb.com -t 100 --report report.html --deepcrawl --duration 420 -s
-python xssscanadv.py -d http://testphp.vulnweb.com -t 100 --report report.html --deepcrawl --duration 420 -s --mode autounderstand --use-model
+```markdown
+# Usage Instructions
 
+## Step 1: Crawl the target website for URLs
+```bash
+python xssscanadv.py -d http://testphp.vulnweb.com --crawl
+```
 
+## Step 1a: Use the crawled URLs for scanning
+```bash
+python xssscanadv.py -l crawled_urls.txt -t 100 --duration 3600 -s --mode autounderstand --use-model --report report.html
+```
+
+## Step 2: Quickly extract and clean URLs from the Wayback Machine
+```bash
+python xssscanadv.py -d http://testphp.vulnweb.com --extractquick
+```
+
+## Step 2a: Use the cleaned URLs for scanning
+```bash
+python xssscanadv.py -l testphp_vulnweb_com_cleaned_urls.txt -t 100 --duration 3600 -s --mode autounderstand --use-model --report report.html
+```
+
+## Step 3: Perform a deep crawl using CommonCrawl and Wayback Machine
+```bash
+python xssscanadv.py -d http://testphp.vulnweb.com --deepcrawl
+```
+
+## Step 3a: Use the deep crawled URLs for scanning
+```bash
+python xssscanadv.py -l found_links.txt -t 100 --duration 3600 -s --mode autounderstand --use-model --report report.html
+```
+```
