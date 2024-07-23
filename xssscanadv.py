@@ -6,9 +6,8 @@ import sqlite3
 import time
 import re
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse, parse_qs, urljoin
-import os
 import pickle
 import queue
 import signal
@@ -17,13 +16,15 @@ import json
 import logging
 from bs4 import BeautifulSoup
 import random
+import os
+
+# Add the directory containing payload_generation.py to the Python path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from payload_generation import generate_payloads
 from deep_learning import DeepLearningModel
 from nlp_analysis import analyze_content
 from reinforcement_learning import ReinforcementLearningAgent
-from payload_generation import generate_payloads
-
-# Add the current directory to the Python path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -99,13 +100,12 @@ def create_files():
     open('total_links_audited.txt', 'w').close()
     open('found_links.txt', 'w').close()
     open('audit_links.txt', 'w').close()
-    if not os.path.exists('xss_scan_results.db'):
-        setup_database()
-    if not os.path.exists('xss_model.pkl'):
-        with open('xss_model.pkl', 'wb') as f:
-            pickle.dump(None, f)
 
 create_files()
+
+# Create logs directory
+if not os.path.exists('logs'):
+    os.makedirs('logs')
 
 # Cursor animation for loading
 stop_animation = False
@@ -351,7 +351,7 @@ class XSSScanner:
         self.use_model = use_model
         self.vulnerable_urls = []
         self.scan_results = []
-        self.payloads = generate_payloads()
+        self.payloads = generate_payloads() or []
         self.methods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"]
         self.model = DeepLearningModel() if use_model else None
         self.rl_agent = ReinforcementLearningAgent()
@@ -439,76 +439,43 @@ class XSSScanner:
             elif 'iis' in server_header:
                 return 'iis'
             else:
-                return 'unknown'
+                return 'generic'  # Default to 'generic' if server type is unknown
         except requests.RequestException as e:
             print(f"{RED}[ERROR]{END} Failed to detect server for {url}: {str(e)}")
-            return 'unknown'
+            return 'generic'  # Default to 'generic' if there's an error
 
     def determine_xss_type(self, url, param, payload, response):
-        # Dynamic logic to determine the type of XSS vulnerability
-        if "<script>" in response.text or "alert(" in response.text:
-            if "stored_xss_indicator" in response.text:
-                return "Stored XSS"
-            elif "dom_xss_indicator" in response.text:
-                return "DOM-based XSS"
-            elif "reflected_xss_indicator" in response.text:
-                return "Reflected XSS"
-            elif "blind_xss_indicator" in response.text:
-                return "Blind XSS"
-            else:
+        response_text = response.text.lower()
+        if "<script>" in response_text or "alert(" in response_text:
+            if payload in response_text:
                 return "Reflected XSS"
         return "Unknown XSS"
 
-    def scan_form_for_xss(self, url, payloads, method):
-        headers = {'User-Agent': random.choice(USER_AGENTS)}
-        response = requests.get(url, headers=headers, verify=False, timeout=10)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        forms = soup.find_all('form')
-        
-        for form in forms:
-            action = form.get('action')
-            form_method = form.get('method', 'get').lower()
-            inputs = form.find_all('input')
-            data = {}
-            
-            for input_tag in inputs:
-                name = input_tag.get('name')
-                if name:
-                    data[name] = payloads[0]  # Using the first payload for simplicity
-
-            form_url = url if not action else action
-            if form_method == 'post':
-                form_response = requests.post(form_url, data=data, headers=headers, verify=False, timeout=10)
-            else:
-                form_response = requests.get(form_url, params=data, headers=headers, verify=False, timeout=10)
-            
-            xss_type = self.determine_xss_type(url, list(data.keys())[0], payloads[0], form_response)
-            success = form_response.status_code == 200 and payloads[0] in form_response.text
-            if success:
-                self.vulnerable_urls.append((url, payloads[0], method))
-                insert_vulnerability_data(url, payloads[0], method, xss_type, int(success))
-                with open('audit_links.txt', 'a') as file:
-                    file.write(f"{url},{payloads[0]},{method},{xss_type}\n")
-                insert_training_data(url, list(data.keys())[0], payloads[0], self.detect_server(url), method, form_response.status_code, time.time(), form_response.text, int(success), form_response.text[:100], int(success))
-
     def scan_urls_for_xss(self, url):
         server_type = self.detect_server(url)
-        payloads = generate_payloads(server_type)
+        self.payloads = generate_payloads(server_type)
+        if not self.payloads:
+            print(f"{RED}[ERROR]{END} No payloads generated for testing.")
+            return
+
         parsed_url = urlparse(url)
         query_params = parse_qs(parsed_url.query)
         headers = {'User-Agent': random.choice(USER_AGENTS)}
 
         for param, values in query_params.items():
-            for payload in payloads:
+            for payload in self.payloads:
                 for method in self.methods:
                     try:
                         start_time = time.time()
-                        if method == "GET" or method == "HEAD":
+                        if method in ["GET", "HEAD"]:
                             response = requests.request(method, f"{url}?{param}={payload}", headers=headers, verify=False, timeout=10)
                         else:
                             response = requests.request(method, url, data={param: payload}, headers=headers, verify=False, timeout=10)
                         response_time = time.time() - start_time
                         success = response.status_code == 200 and payload in response.text
+
+                        logging.info(f"Testing {url} with payload {payload} using method {method}. Success: {success}")
+
                         self.scan_results.append({'query_params': query_params, 'success': int(success)})
 
                         if success:
@@ -517,23 +484,23 @@ class XSSScanner:
                             insert_vulnerability_data(url, payload, method, xss_type, int(success))
                             with open('audit_links.txt', 'a') as file:
                                 file.write(f"{url},{payload},{method},{xss_type}\n")
+                        else:
+                            logging.info(f"No XSS vulnerability detected for {url} with payload {payload} using method {method}")
+
                         self.rl_agent.learn(url, param, payload, method, success)
 
                         # Insert training data
                         insert_training_data(url, param, payload, server_type, method, response.status_code, response_time, response.text, int(success), response.text[:100], int(success))
 
                     except requests.RequestException as e:
-                        print(f"{RED}[ERROR]{END} Failed to test {url} with {method}: {str(e)}")
-
-        # Scan forms for XSS
-        self.scan_form_for_xss(url, payloads, method)
+                        logging.error(f"Failed to test {url} with {method}: {str(e)}")
 
     def start_scan(self):
         if self.use_model and self.model:
             print(f"{GREEN}[INFO]{END} Using trained model to filter URLs before scanning.")
             self.url_list = self.auto_filter(self.url_list)
 
-        with ProcessPoolExecutor() as executor:
+        with ThreadPoolExecutor(max_workers=self.thread_number) as executor:
             future_to_url = {executor.submit(self.scan_urls_for_xss, url): url for url in self.url_list}
             for future in as_completed(future_to_url):
                 url = future_to_url[future]
@@ -628,7 +595,7 @@ if __name__ == '__main__':
         file.write(str(total_links_audited))  # Write the total number of links audited to a text file
     logging.info(f"Total Links Audited: {total_links_audited}")
 
-    print(f"{current_time}] Total Links Audited: ", total_links_audited)
+    print(f"[{current_time}] Total Links Audited: ", total_links_audited)
 
     for url, payload, method in vulnerable_urls:
         print(f"Vulnerable URL: {url} with Payload: {payload} using Method: {method}")
@@ -643,7 +610,7 @@ if __name__ == '__main__':
 
     # Check for Blind XSS results
     scanner.check_blind_xss()
-
+    
 # Function to view data in the database
 def view_db():
     connection = sqlite3.connect('xss_scan_results.db')
