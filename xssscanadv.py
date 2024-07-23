@@ -9,6 +9,7 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse, parse_qs, urljoin
 import pickle
+import pandas as pd
 import queue
 import signal
 import csv
@@ -509,13 +510,34 @@ class XSSScanner:
                 except Exception as exc:
                     print(f"{RED}[ERROR]{END} {url} generated an exception: {exc}")
 
+    def generate_report(self):
         if self.report_file:
             with open(self.report_file, 'w') as f:
-                f.write(f"Total URLs scanned: {len(self.url_list)}\n")
-                f.write(f"Total Confirmed Cross Site Scripting Vulnerabilities: {len(self.vulnerable_urls)}\n")
+                # Start HTML structure
+                f.write("<html><head><title>XSS Vulnerability Report</title>")
+                f.write("<style>")
+                f.write("table { width: 100%; border-collapse: collapse; }")
+                f.write("th, td { border: 1px solid black; padding: 8px; text-align: left; }")
+                f.write("th { background-color: #f2f2f2; }")
+                f.write("</style>")
+                f.write("</head><body>")
+                f.write("<h1>XSS Vulnerability Report</h1>")
+                f.write(f"<p>Total URLs scanned: {len(self.url_list)}</p>")
+                f.write(f"<p>Total Confirmed Cross Site Scripting Vulnerabilities: {len(self.vulnerable_urls)}</p>")
+                
+                # Start table
+                f.write("<table>")
+                f.write("<tr><th>Vulnerable URL</th><th>Payload</th><th>Method</th></tr>")
+                
                 for url, payload, method in self.vulnerable_urls:
-                    f.write(f"Vulnerable URL: {url} with Payload: {payload} using Method: {method}\n")
-
+                    # Neutralize the alert payload
+                    payload = payload.replace('<script>', '&lt;script&gt;').replace('</script>', '&lt;/script&gt;')
+                    f.write(f"<tr><td>{url}</td><td>{payload}</td><td>{method}</td></tr>")
+                
+                # End table and HTML structure
+                f.write("</table>")
+                f.write("</body></html>")
+        
         return self.vulnerable_urls
 
     def check_blind_xss(self):
