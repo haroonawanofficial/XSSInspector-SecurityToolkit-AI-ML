@@ -99,10 +99,6 @@ Generates detailed HTML reports summarizing the scan results and vulnerabilities
 Utilizes multi-threading to scan multiple URLs simultaneously, improving scanning speed and efficiency.
 
 ## Usage
-Here are the usage instructions formatted in markdown for GitHub:
-
-```markdown
-# Usage Instructions
 
 ## Step 1: Crawl the target website for URLs
 ```bash
