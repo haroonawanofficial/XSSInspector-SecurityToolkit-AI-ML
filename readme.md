@@ -212,3 +212,9 @@ python xssscanadv.py -l found_links.txt -t 100 --duration 3600 -s --mode autound
 - High Accuracy: The accuracy remains consistently high, around 98.7% to 99.0%, throughout the training epochs. This indicates that the model is performing well on the training data.
 - Low Loss: The loss values are relatively low, starting from 0.1046 and decreasing to around 0.0423 - 0.0509. Lower loss values indicate that the model's predictions are close to the actual values.
 - Stability: The accuracy and loss values do not fluctuate wildly between epochs, suggesting that the model is not overfitting and is learning the patterns in the data effectively.
+
+## View model or Evaluate Model
+- To view model structure: pklviewer.py (your .pkl file name)
+- To view performance and traning: python evaluatemodel.py training_data.csv (your .pkl file name)
+- Please be noted - xssscanadv use reinforcement learning meaning it mutates over time automatically 
+![AI-ML XSS Pic4](https://i.ibb.co/D1ttcHx/datacleanse.png)
