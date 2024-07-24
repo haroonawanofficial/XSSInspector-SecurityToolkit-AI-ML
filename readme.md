@@ -215,8 +215,11 @@ python xssscanadv.py -l found_links.txt -t 100 --duration 3600 -s --mode autound
 
 
 ## Trained Model of .pkl file and Pkl File Viewer
-- High performance of .pkl file
-- Use pklfileview.py to see your model performance
+- The trained model file is provided as testphp.vulnweb.com.pkl.
+- High performance is achieved with the testphp.vulnweb.com.pkl file.
+- Use pklfileview.py to view the .pkl file and evaluate the model's performance.
+- Use the --domain option to change the .pkl file for more efficient prediction and attack on the target.
+- For example, you can use myownname.pkl --domain myownname.com. I hope you understand the rest of the idea.
 ![AI-ML XSS Pic5](https://i.ibb.co/zsm8cCP/ai-ml-xss-pic4-trained-testphp-vulnweb-com-pkl-model.png)
 
 
