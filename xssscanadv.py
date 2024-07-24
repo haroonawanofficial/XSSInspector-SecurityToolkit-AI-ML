@@ -28,7 +28,13 @@ from nlp_analysis import analyze_content
 from reinforcement_learning import ReinforcementLearningAgent
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+log_filename = os.path.join('logs', 'xss_scan.log')
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    handlers=[
+                        logging.FileHandler(log_filename),
+                        logging.StreamHandler()
+                    ])
 
 # Constants for terminal colors
 BLUE, RED, WHITE, YELLOW, MAGENTA, GREEN, END = '\033[94m', '\033[91m', '\033[97m', '\033[93m', '\033[1;35m', '\033[1;32m', '\033[0m'
@@ -178,15 +184,18 @@ def get_arguments():
     parser.add_argument("--mode", choices=["finetune", "autounderstand"], default="autounderstand", help="Fine-tune manually or auto-understand")
     parser.add_argument("--blind-xss-endpoint", help="Public endpoint to check for Blind XSS payload execution")
     parser.add_argument("--use-model", action='store_true', help="Use the trained model to filter URLs before scanning")
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("-l", "--list", help="URLs List, e.g., google_urls.txt")
-    group.add_argument("-d", "--domain", help="Target Domain Name, e.g., testphp.vulnweb.com")
+    parser.add_argument("-l", "--list", help="URLs List, e.g., google_urls.txt")
+    parser.add_argument("-d", "--domain", help="Target Domain Name, e.g., testphp.vulnweb.com")
+
     return parser.parse_args()
 
 # Function to normalize domain URL
-def normalize_domain(domain):
-    domain = domain.replace('http://', '').replace('https://', '').strip('/')
-    return domain
+def normalize_domain(domain, list_name=None):
+    if domain:
+        return domain.replace('http://', '').replace('https://', '').strip('/')
+    elif list_name:
+        return list_name.split('.')[0].replace('_', '-')
+    return ''
 
 # Function to fetch URLs using CommonCrawl
 def fetch_urls_commoncrawl(domain):
@@ -362,6 +371,14 @@ class XSSScanner:
 
     def load_or_train_model(self):
         model_path = f"{normalize_domain(args.domain)}_xss_model.pkl"
+        
+        # Check if the model file exists, and create and save a new model if it doesn't
+        if not os.path.exists(model_path):
+            self.model = DeepLearningModel()  # Initialize your model here
+            self.save_model()
+            print(f"{GREEN}[INFO]{END} Created and saved a new model at {model_path}")
+
+        # Load the model or train it if necessary
         if os.path.exists(model_path):
             with open(model_path, 'rb') as model_file:
                 self.model = pickle.load(model_file)
@@ -373,6 +390,7 @@ class XSSScanner:
         else:
             print(f"{RED}[ERROR]{END} No trained model found for domain: {args.domain}")
             self.train_new_model()
+
 
     def train_new_model(self):
         logging.info("Training a new model...")
@@ -607,6 +625,19 @@ def terminate_scan():
 # Handle Ctrl+C gracefully
 signal.signal(signal.SIGINT, lambda signal, frame: terminate_scan())
 
+def view_trained_data():
+    if args.domain is None:
+        print(f"{RED}[INFO]{END} No domain provided. Skipping viewing of trained data.")
+        return
+
+    model_path = f"{normalize_domain(args.domain)}_xss_model.pkl"
+    if os.path.exists(model_path):
+        with open(model_path, 'rb') as model_file:
+            model = pickle.load(model_file)
+            print(model)
+    else:
+        print(f"{RED}[ERROR]{END} No trained model found for domain: {args.domain}")
+
 if __name__ == '__main__':
     args = get_arguments()
     
@@ -620,8 +651,10 @@ if __name__ == '__main__':
 
     if args.list:
         target_urls = read_target_from_file(args.list)
+        domain = normalize_domain(None, args.list)
     elif args.domain:
         target_urls = [args.domain]
+        domain = normalize_domain(args.domain)
         if args.deepcrawl:
             commoncrawl_urls = fetch_urls_commoncrawl(args.domain)
             wayback_urls = fetch_urls_wayback(args.domain)
@@ -643,7 +676,11 @@ if __name__ == '__main__':
         timer = threading.Timer(args.duration, terminate_scan)
         timer.start()
 
+    # Use the domain or derived name from list to create model filename
+    model_path = f"{normalize_domain(domain)}_xss_model.pkl"
+    
     scanner = XSSScanner(target_urls, args.thread, args.report, args.mode, args.blind_xss_endpoint, args.use_model)
+    scanner.load_or_train_model()  # Load or train the model
     vulnerable_urls = scanner.start_scan()
 
     # Train the model after scanning
@@ -660,11 +697,11 @@ if __name__ == '__main__':
 
     print(f"[{current_time}] Total Links Audited: ", total_links_audited)
     
-if vulnerable_urls is not None:
-    for url, payload, method in vulnerable_urls:
-        print(f"Vulnerable URL: {url} with Payload: {payload} using Method: {method}")
-    print(f"[{current_time}] Total Confirmed Cross Site Scripting Vulnerabilities: ", len(vulnerable_urls))
-    logging.info(f"Total Confirmed Cross Site Scripting Vulnerabilities: {len(vulnerable_urls)}")
+    if vulnerable_urls is not None:
+        for url, payload, method in vulnerable_urls:
+            print(f"Vulnerable URL: {url} with Payload: {payload} using Method: {method}")
+        print(f"[{current_time}] Total Confirmed Cross Site Scripting Vulnerabilities: ", len(vulnerable_urls))
+        logging.info(f"Total Confirmed Cross Site Scripting Vulnerabilities: {len(vulnerable_urls)}")
 
     # Stop the cursor animation
     stop_animation = True
@@ -675,26 +712,6 @@ if vulnerable_urls is not None:
     # Check for Blind XSS results
     scanner.check_blind_xss()
     
-# Function to view data in the database
-def view_db():
-    connection = sqlite3.connect('xss_scan_results.db')
-    cursor = connection.cursor()
-    cursor.execute("SELECT * FROM vulnerabilities")
-    rows = cursor.fetchall()
-    for row in rows:
-        print(row)
-    connection.close()
-
-# Function to view trained model data
-def view_trained_data():
-    model_path = f"{normalize_domain(args.domain)}_xss_model.pkl"
-    if os.path.exists(model_path):
-        with open(model_path, 'rb') as model_file:
-            model = pickle.load(model_file)
-            print(model)
-    else:
-        print(f"{RED}[ERROR]{END} No trained model found for domain: {args.domain}")
-
-# Call these functions as needed
-view_db()
-view_trained_data()
+    # Call the function to view the trained data if a domain is provided
+    if args.domain:
+        view_trained_data()
