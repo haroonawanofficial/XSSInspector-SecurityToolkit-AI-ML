@@ -212,3 +212,11 @@ python xssscanadv.py -l found_links.txt -t 100 --duration 3600 -s --mode autound
 - High Accuracy: The accuracy remains consistently high, around 98.7% to 99.0%, throughout the training epochs. This indicates that the model is performing well on the training data.
 - Low Loss: The loss values are relatively low, starting from 0.1046 and decreasing to around 0.0423 - 0.0509. Lower loss values indicate that the model's predictions are close to the actual values.
 - Stability: The accuracy and loss values do not fluctuate wildly between epochs, suggesting that the model is not overfitting and is learning the patterns in the data effectively.
+
+
+## Trained Model of .pkl file and Pkl File Viewer
+- High performance of .pkl file
+- Use pklfileview.py to see your model performance
+![AI-ML XSS Pic5](https://i.ibb.co/zsm8cCP/ai-ml-xss-pic4-trained-testphp-vulnweb-com-pkl-model.png)
+
+
