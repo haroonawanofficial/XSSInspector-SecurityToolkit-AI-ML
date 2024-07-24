@@ -170,8 +170,8 @@ python xssscanadv.py -l testphp_vulnweb_com_cleaned_urls.txt -t 100 --duration 3
 ```
 
 ## Use the cleaned URLs with domain for scanning with Aritificial Intelligence and Machine Learning Mode
-- This will testphp.vulnweb.com.pkl trained model
-- You model show be in always a few kbs and mbsformat
+- This will create testphp.vulnweb.com.pkl trained model
+- You model should always be in few kbs and mbs
   
 ```bash
 python xssscanadv.py -d domain testphp.vulnweb.com -l testphp_vulnweb_com_cleaned_urls.txt -t 100 --duration 3600 -s --mode autounderstand --use-model --report report.html
