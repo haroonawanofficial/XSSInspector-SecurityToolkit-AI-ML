@@ -144,37 +144,45 @@ Utilizes multi-threading to scan multiple URLs simultaneously, improving scannin
 
 ## Usage
 
-## Step 1: Crawl the target website for URLs
+## Crawl the target website for URLs
 ```bash
 python xssscanadv.py -d http://testphp.vulnweb.com --crawl
 ```
 
-## Step 1a: Crawl the target website for URLs with Report
+##  Target website for URLs with Report
 ```bash
 python xssscanadv.py -d http://testphp.vulnweb.com --crawl --report report.html
 ```
 
-## Step 1b: Use the crawled URLs for scanning
+## Crawling URLs for scanning
 ```bash
 python xssscanadv.py -l crawled_urls.txt -t 100 --duration 3600 -s --mode autounderstand --use-model --report report.html
 ```
 
-## Step 2: Quickly extract and clean URLs from the Wayback Machine
+## Quickly extract and clean URLs from the Wayback Machine, Common Crawl
 ```bash
 python xssscanadv.py -d http://testphp.vulnweb.com --extractquick
 ```
 
-## Step 2a: Use the cleaned URLs for scanning
+## Use the cleaned URLs for scanning
 ```bash
 python xssscanadv.py -l testphp_vulnweb_com_cleaned_urls.txt -t 100 --duration 3600 -s --mode autounderstand --use-model --report report.html
 ```
 
-## Step 3: Perform a deep crawl using CommonCrawl and Wayback Machine
+## Use the cleaned URLs with domain for scanning with Aritificial Intelligence and Machine Learning Mode
+- This will testphp.vulnweb.com.pkl trained model
+- You model show be in always a few kbs and mbsformat
+  
 ```bash
-python xssscanadv.py -d http://testphp.vulnweb.com --deepcrawl
+python xssscanadv.py -d domain testphp.vulnweb.com -l testphp_vulnweb_com_cleaned_urls.txt -t 100 --duration 3600 -s --mode autounderstand --use-model --report report.html
 ```
 
-## Step 3a: Use the deep crawled URLs for scanning
+## Perform a deep crawl using CommonCrawl and Wayback Machine
+```bash
+python xssscanadv.py -d http://testphp.vulnweb.com --deepcrawl --report myreport.html
+```
+
+## Use the deep crawled URLs for scanning
 ```bash
 python xssscanadv.py -l found_links.txt -t 100 --duration 3600 -s --mode autounderstand --use-model --report report.html
 ```
