@@ -571,31 +571,39 @@ class XSSScanner:
 
     def generate_report(self):
         if self.report_file:
-            with open(self.report_file, 'w') as f:
-                # Start HTML structure
-                f.write("<html><head><title>XSS Vulnerability Report</title>")
-                f.write("<style>")
-                f.write("table { width: 100%; border-collapse: collapse; }")
-                f.write("th, td { border: 1px solid black; padding: 8px; text-align: left; }")
-                f.write("th { background-color: #f2f2f2; }")
-                f.write("</style>")
-                f.write("</head><body>")
-                f.write("<h1>XSS Vulnerability Report</h1>")
-                f.write(f"<p>Total URLs scanned: {len(self.url_list)}</p>")
-                f.write(f"<p>Total Confirmed Cross Site Scripting Vulnerabilities: {len(self.vulnerable_urls)}</p>")
+            try:
+                with open(self.report_file, 'w') as f:
+                    # Start HTML structure
+                    f.write("<html><head><title>XSS Vulnerability Report</title>")
+                    f.write("<style>")
+                    f.write("table { width: 100%; border-collapse: collapse; }")
+                    f.write("th, td { border: 1px solid black; padding: 8px; text-align: left; }")
+                    f.write("th { background-color: #f2f2f2; }")
+                    f.write("</style>")
+                    f.write("</head><body>")
+                    f.write("<h1>XSS Vulnerability Report</h1>")
+                    f.write(f"<p>Total URLs scanned: {len(self.url_list)}</p>")
+                    f.write(f"<p>Total Confirmed Cross Site Scripting Vulnerabilities: {len(self.vulnerable_urls)}</p>")
+                    
+                    # Start table
+                    f.write("<table>")
+                    f.write("<tr><th>Vulnerable URL</th><th>Payload</th><th>Method</th></tr>")
+                    
+                    for url, payload, method in self.vulnerable_urls:
+                        # Neutralize the alert payload
+                        payload = payload.replace('<script>', '&lt;script&gt;').replace('</script>', '&lt;/script&gt;')
+                        f.write(f"<tr><td>{url}</td><td>{payload}</td><td>{method}</td></tr>")
+                    
+                    # End table and HTML structure
+                    f.write("</table>")
+                    f.write("</body></html>")
                 
-                # Start table
-                f.write("<table>")
-                f.write("<tr><th>Vulnerable URL</th><th>Payload</th><th>Method</th></tr>")
-                
-                for url, payload, method in self.vulnerable_urls:
-                    # Neutralize the alert payload
-                    payload = payload.replace('<script>', '&lt;script&gt;').replace('</script>', '&lt;/script&gt;')
-                    f.write(f"<tr><td>{url}</td><td>{payload}</td><td>{method}</td></tr>")
-                
-                # End table and HTML structure
-                f.write("</table>")
-                f.write("</body></html>")
+                logging.info(f"Report generated successfully at {self.report_file}")
+            except Exception as e:
+                logging.error(f"Error generating report: {e}")
+                print(f"{RED}[ERROR]{END} Failed to generate report: {e}")
+        else:
+            logging.info("Report file not specified. Skipping report generation.")
         
         return self.vulnerable_urls
 
@@ -681,7 +689,7 @@ if __name__ == '__main__':
     
     scanner = XSSScanner(target_urls, args.thread, args.report, args.mode, args.blind_xss_endpoint, args.use_model)
     scanner.load_or_train_model()  # Load or train the model
-    vulnerable_urls = scanner.start_scan()
+    scanner.start_scan()
 
     # Train the model after scanning
     if scanner.scan_results:
@@ -697,11 +705,11 @@ if __name__ == '__main__':
 
     print(f"[{current_time}] Total Links Audited: ", total_links_audited)
     
-    if vulnerable_urls is not None:
-        for url, payload, method in vulnerable_urls:
+    if scanner.vulnerable_urls is not None:
+        for url, payload, method in scanner.vulnerable_urls:
             print(f"Vulnerable URL: {url} with Payload: {payload} using Method: {method}")
-        print(f"[{current_time}] Total Confirmed Cross Site Scripting Vulnerabilities: ", len(vulnerable_urls))
-        logging.info(f"Total Confirmed Cross Site Scripting Vulnerabilities: {len(vulnerable_urls)}")
+        print(f"[{current_time}] Total Confirmed Cross Site Scripting Vulnerabilities: ", len(scanner.vulnerable_urls))
+        logging.info(f"Total Confirmed Cross Site Scripting Vulnerabilities: {len(scanner.vulnerable_urls)}")
 
     # Stop the cursor animation
     stop_animation = True
@@ -711,6 +719,9 @@ if __name__ == '__main__':
 
     # Check for Blind XSS results
     scanner.check_blind_xss()
+    
+    # Generate the report
+    scanner.generate_report()
     
     # Call the function to view the trained data if a domain is provided
     if args.domain:
