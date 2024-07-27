@@ -28,13 +28,20 @@ from nlp_analysis import analyze_content
 from reinforcement_learning import ReinforcementLearningAgent
 
 # Setup logging
-log_filename = os.path.join('logs', 'xss_scan.log')
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    handlers=[
-                        logging.FileHandler(log_filename),
-                        logging.StreamHandler()
-                    ])
+def setup_logging(domain):
+    log_dir = 'logs'
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    sanitized_domain = re.sub(r'\W+', '_', domain)
+    log_filename = os.path.join(log_dir, f'{sanitized_domain}_{current_time}.log')
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s - %(levelname)s - %(message)s',
+                        handlers=[
+                            logging.FileHandler(log_filename),
+                            logging.StreamHandler()
+                        ])
+    return log_filename
 
 # Constants for terminal colors
 BLUE, RED, WHITE, YELLOW, MAGENTA, GREEN, END = '\033[94m', '\033[91m', '\033[97m', '\033[93m', '\033[1;35m', '\033[1;32m', '\033[0m'
@@ -169,6 +176,10 @@ print("\nStep 3: Perform a deep crawl using CommonCrawl and Wayback Machine:")
 print("python xssscanadv.py -d http://testphp.vulnweb.com --deepcrawl")
 print("\nStep 3a: Use the deep crawled URLs for scanning:")
 print("python xssscanadv.py -l found_links.txt -t 100 --duration 3600 -s --mode autounderstand --use-model --report report.html\n")
+
+# Argument parsing
+def get_arguments():
+    parser = argparse.ArgumentParser
 
 # Argument parsing
 def get_arguments():
@@ -649,6 +660,14 @@ def view_trained_data():
 if __name__ == '__main__':
     args = get_arguments()
     
+    # Initialize logging with domain and log CLI command
+    domain = args.domain if args.domain else 'default_domain'
+    log_filename = setup_logging(domain)
+    logging.info(f"CLI command: {' '.join(sys.argv)}")
+
+    print(f"{GREEN}[INFO]{END} Starting the XSS Scanner at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.")
+    requests.packages.urllib3.disable_warnings()
+
     if args.extractquick:
         if args.domain:
             fetch_and_clean_urls(args.domain, stream_output=True)
